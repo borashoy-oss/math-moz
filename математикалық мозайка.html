@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="kk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Математикалық Мозайка</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: Arial, sans-serif;
+            background: #1a1a2e;
+            color: white;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        h1 { color: #00d9ff; margin: 20px 0; text-align: center; }
+        
+        .game { display: flex; gap: 40px; flex-wrap: wrap; justify-content: center; }
+        
+        #board {
+            display: grid;
+            grid-template-columns: repeat(4, 120px);
+            grid-template-rows: repeat(4, 120px);
+            gap: 2px;
+            background: #16213e;
+            padding: 2px;
+            border-radius: 10px;
+        }
+        
+        .cell {
+            width: 120px;
+            height: 120px;
+            background: #0f3460;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            font-size: 11px;
+            padding: 5px;
+            border-radius: 5px;
+            transition: 0.2s;
+            position: relative;
+        }
+        .cell:hover { background: #1a4a7a; }
+        .cell.solved { padding: 0; }
+        .cell-number {            position: absolute;
+            top: 3px;
+            left: 5px;
+            font-size: 9px;
+            color: #888;
+        }
+        
+        #answers {
+            display: grid;
+            grid-template-columns: repeat(2, 100px);
+            gap: 10px;
+            background: #16213e;
+            padding: 15px;
+            border-radius: 10px;
+            align-content: start;
+        }
+        
+        .answer {
+            width: 100px;
+            height: 45px;
+            background: linear-gradient(135deg, #00b894, #00cec9);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 8px;
+            cursor: grab;
+            font-weight: bold;
+            font-size: 18px;
+            user-select: none;
+            transition: transform 0.1s;
+        }
+        .answer:hover { transform: scale(1.05); }
+        .answer:active { cursor: grabbing; }
+        .answer.hidden { display: none; }
+        
+        .image-part {
+            width: 100%;
+            height: 100%;
+            background: url('https://picsum.photos/seed/math123/500/500') center/500px 500px no-repeat;
+            border-radius: 5px;
+        }
+        
+        #message {
+            margin: 15px 0;
+            font-size: 20px;
+            font-weight: bold;
+            min-height: 30px;
+            text-align: center;
+        }        .correct { color: #00b894; }
+        .wrong { color: #ff6b6b; animation: shake 0.3s; }
+        .win { color: #ffd93d; font-size: 24px; }
+        
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-8px); }
+            75% { transform: translateX(8px); }
+        }
+        
+        #reset {
+            margin: 10px;
+            padding: 12px 30px;
+            background: #e94560;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        #reset:hover { background: #ff6b8a; transform: scale(1.05); }
+        
+        .progress {
+            margin: 10px 0;
+            font-size: 14px;
+            color: #aaa;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>🧮 Математикалық Мозайка</h1>
+    <button id="reset">🔄 Жаңа ойын</button>
+    <div class="progress">Шешілген: <span id="count">0</span> / 16</div>
+    <div id="message">Дұрыс жауапты сүйреп апарыңыз 👇</div>
+    
+    <div class="game">
+        <div id="board"></div>
+        <div id="answers"></div>
+    </div>
+
+    <script>
+        // === ТАПСЫРМАЛАР ===
+        const tasks = [
+            { question: "x² - 5x + 6 = 0\nx₁ = ?", answer: "2" },
+            { question: "x² - 7x + 12 = 0\nx₂ = ?", answer: "4" },
+            { question: "Дискриминант:\n2x² - 5x + 2 = 0", answer: "9" },
+            { question: "x² ≤ 16\nx макс = ?", answer: "4" },
+            { question: "√(x - 3) = 2\nx = ?", answer: "7" },            { question: "Пифагор:\na=5, c=13, b=?", answer: "12" },
+            { question: "x² - 10x + 25 = 0\nтүбір саны = ?", answer: "1" },
+            { question: "Виет теоремасы:\nx² - 9x + 20 = 0\nx₁·x₂ = ?", answer: "20" },
+            { question: "x² - x - 6 = 0\nтеріс түбірі = ?", answer: "-2" },
+            { question: "x² - 4 = 0\nтүбірлер қосындысы = ?", answer: "0" },
+            { question: "2x² - 8 = 0\nоң түбірі = ?", answer: "2" },
+            { question: "√196 - √169 = ?", answer: "1" },
+            { question: "x² < 0\nшешім саны = ?", answer: "0" },
+            { question: "Дискриминант:\nx² + 6x + 9 = 0", answer: "0" },
+            { question: "Шеңбер ауданы S = 25π\nрадиус r = ?", answer: "5" },
+            { question: "4x² - 1 = 0\nоң түбірі = ?", answer: "0.5" }
+        ];
+
+        let solved = 0;
+        const board = document.getElementById('board');
+        const answersBox = document.getElementById('answers');
+        const message = document.getElementById('message');
+        const countEl = document.getElementById('count');
+        const resetBtn = document.getElementById('reset');
+
+        // === ҰЯШЫҚТАРДЫ ЖАСАУ ===
+        function createBoard() {
+            board.innerHTML = '';
+            tasks.forEach((task, i) => {
+                const cell = document.createElement('div');
+                cell.className = 'cell';
+                cell.dataset.answer = task.answer;
+                cell.dataset.index = i;
+                cell.innerHTML = `
+                    <span class="cell-number">${i + 1}</span>
+                    <span>${task.question}</span>
+                `;
+                
+                // Drop оқиғасы
+                cell.ondragover = (e) => e.preventDefault();
+                cell.ondrop = function(e) {
+                    e.preventDefault();
+                    const droppedAnswer = e.dataTransfer.getData('text');
+                    const correctAnswer = this.dataset.answer;
+                    
+                    // === САЛЫСТЫРУ (ең маңызды жер!) ===
+                    const cleanDropped = droppedAnswer.toString().trim().replace(',', '.');
+                    const cleanCorrect = correctAnswer.toString().trim().replace(',', '.');
+                    
+                    const isNumberA = !isNaN(parseFloat(cleanDropped));
+                    const isNumberB = !isNaN(parseFloat(cleanCorrect));
+                    
+                    let isCorrect = false;
+                    if (isNumberA && isNumberB) {
+                        isCorrect = Math.abs(parseFloat(cleanDropped) - parseFloat(cleanCorrect)) < 0.001;                    } else {
+                        isCorrect = cleanDropped.toLowerCase() === cleanCorrect.toLowerCase();
+                    }
+                    
+                    if (isCorrect) {
+                        // ✅ ДҰРЫС
+                        this.classList.add('solved');
+                        this.innerHTML = `<div class="image-part" style="background-position: -${(i%4)*120}px -${Math.floor(i/4)*120}px"></div>`;
+                        this.ondrop = null;
+                        this.ondragover = null;
+                        
+                        // Жауапты жою
+                        const pieceId = e.dataTransfer.getData('pieceId');
+                        const piece = document.getElementById(pieceId);
+                        if (piece) piece.classList.add('hidden');
+                        
+                        solved++;
+                        countEl.textContent = solved;
+                        message.textContent = '✅ Дұрыс!';
+                        message.className = 'correct';
+                        
+                        if (solved === 16) {
+                            message.textContent = '🏆 ЖЕҢІС! БАРЛЫҒЫ ДҰРЫС!';
+                            message.className = 'win';
+                            board.style.boxShadow = '0 0 30px #ffd93d';
+                        }
+                    } else {
+                        // ❌ ҚАТЕ
+                        message.textContent = '❌ Қате! Қайта көріңіз';
+                        message.className = 'wrong';
+                        this.style.background = '#ff6b6b';
+                        setTimeout(() => {
+                            this.style.background = '';
+                            message.textContent = 'Дұрыс жауапты сүйреп апарыңыз 👇';
+                            message.className = '';
+                        }, 500);
+                    }
+                };
+                board.appendChild(cell);
+            });
+        }
+
+        // === ЖАУАПТАРДЫ ЖАСАУ ===
+        function createAnswers() {
+            answersBox.innerHTML = '';
+            // Араластыру
+            const shuffled = [...tasks].sort(() => Math.random() - 0.5);
+            
+            shuffled.forEach((task, idx) => {
+                const piece = document.createElement('div');                piece.className = 'answer';
+                piece.draggable = true;
+                piece.textContent = task.answer;
+                piece.id = 'piece-' + idx;
+                
+                piece.ondragstart = function(e) {
+                    e.dataTransfer.setData('text', task.answer);
+                    e.dataTransfer.setData('pieceId', this.id);
+                };
+                
+                answersBox.appendChild(piece);
+            });
+        }
+
+        // === ҚАЙТА БАСТАУ ===
+        function resetGame() {
+            solved = 0;
+            countEl.textContent = '0';
+            message.textContent = 'Дұрыс жауапты сүйреп апарыңыз 👇';
+            message.className = '';
+            board.style.boxShadow = '';
+            createBoard();
+            createAnswers();
+        }
+
+        // === ІСКЕ ҚОСУ ===
+        resetBtn.onclick = resetGame;
+        resetGame();
+    </script>
+</body>
+</html>
